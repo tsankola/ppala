@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class Controller : MonoBehaviour {
 
@@ -27,8 +28,14 @@ public class Controller : MonoBehaviour {
 		{
 			Debug.Log (h.ToString ());
 		}
-
-		hg.getRoute(hg.getHex(new Coordinate(-3,0,3)), hg.getHex (new Coordinate(0,3,-3)));
+		Hex h1 = hg.getHex(new Coordinate(-3,0,3));
+		Hex h2 = hg.getHex(new Coordinate(0,3,-3));
+		Hex h3 = hg.getHex(new Coordinate(-3,1,2));
+		Debug.Log ("Distance: "+ hg.distance(h3,h2));
+		SortedList<int, Hex> route = hg.getRoute(hg.getHex(h1.coordinates), hg.getHex (h2.coordinates));
+		foreach(KeyValuePair <int, Hex> kvp in route) {
+			Debug.Log(kvp.Key + " " + kvp.Value);
+		}
 	}
 	
 	// Update is called once per frame
