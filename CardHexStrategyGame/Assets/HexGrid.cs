@@ -81,22 +81,22 @@ public class HexGrid {	// A symmetric hex grid. TODO: Extract abstract superclas
 	}
 
 	// Returns the shortest route between start and goal hexes
-	public SortedList<int,Hex>  getRoute(Hex start, Hex goal) {
+	public List<KeyValuePair<int,Hex>>  getRoute(Hex start, Hex goal) {
 		if (!(grid.Contains(start.coordinates) && grid.Contains(goal.coordinates)))
 			throw new System.ArgumentException("Unknown hexes");
 		List<routeNode> route = AStar(start, goal);
-		SortedList<int, Hex> retList = new SortedList<int, Hex>();
+		List<KeyValuePair<int, Hex>> retList = new List<KeyValuePair<int, Hex>>();
 		route.ForEach(delegate(routeNode rn) {
-			retList.Add(rn.cost, rn.hex);
+			retList.Add(new KeyValuePair<int, Hex>(rn.cost, rn.hex));
 		});
 		return retList;
 	}
 
-	struct routeNode {
+	private class routeNode {
 		public int cost { get; set; }
 		public int estimate { get; set; }
 		public Hex hex { get; set; }
-		public routeNode(int cost, int estimate, Hex hex) : this() {
+		public routeNode(int cost, int estimate, Hex hex) {
 			this.cost = cost; this.estimate = estimate; this.hex = hex;
 		}
 	}
@@ -104,62 +104,74 @@ public class HexGrid {	// A symmetric hex grid. TODO: Extract abstract superclas
 	// Implementation of the route search algorithm
 	private List<routeNode> AStar(Hex start, Hex goal)
 	{
-		List<routeNode> closedSet = new List<routeNode>();	// The finished route, basically
-		List<routeNode> openSet = new List<routeNode>();	// The finished route, basically
-		List<routeNode> route = new List<routeNode>();
-		openSet.Add(new routeNode(0, 0, start));
+		List<routeNode> closedList = new List<routeNode>();
+		List<routeNode> openList = new List<routeNode>();
+		List<routeNode> finalPath = new List<routeNode>();
+		Dictionary<routeNode, routeNode> pathTree = new Dictionary<routeNode, routeNode>();
+		routeNode goalNode = null;
+		openList.Add(new routeNode(0, 0, start));
+		pathTree.Add(openList[0], null);
 
 		if (start == goal) {
-			closedSet.Add(new routeNode(0,0, start));
-			openSet.Clear();
+			closedList.Add(openList[0]);
+			goalNode = openList[0];
+			openList.Clear();
 		}
 
 
-		while (openSet.Count != 0) {
-			openSet.Sort (delegate(routeNode rn1, routeNode rn2) {
-				return rn1.estimate < rn2.estimate ? -1 : (rn1.estimate == rn2.estimate ? (distance(rn1.hex, goal) < distance(rn2.hex, goal) ? -1 : (distance(rn1.hex, goal) == distance(rn2.hex, goal) ? 0 : 1)) : 1);
+		while (openList.Count != 0) {
+			openList.Sort (delegate(routeNode rn1, routeNode rn2) {
+//				return rn1.estimate < rn2.estimate ? -1 : (rn1.estimate == rn2.estimate ? (distance(rn1.hex, goal) < distance(rn2.hex, goal) ? -1 : (distance(rn1.hex, goal) == distance(rn2.hex, goal) ? 0 : 1)) : 1);
+				return rn1.estimate < rn2.estimate ? -1 : (rn1.estimate == rn2.estimate ? 0 : 1);
 			});
-			routeNode parentNode = openSet[0];
-			openSet.RemoveAt(0);
-			Hashtable children = getNeighbours(parentNode.hex);
 
+			routeNode parentNode = openList[0];
+			openList.RemoveAt(0);
 			Debug.Log("I am at parent " +parentNode.hex + " cost_start: " + parentNode.cost + " estimate: " +parentNode.estimate);
 
+			if (parentNode.hex == goal) {
+				Debug.Log("Gooooooooooooooooooooooooooooooooooooooooooooooooooal " + parentNode.hex);
+				goalNode = parentNode;
+				closedList.Add(parentNode);
+				openList.Clear();
+				break;
+			}
+
+			Hashtable children = getNeighbours(parentNode.hex);
+
 			foreach (Hex child in children.Values) {
-				if (child == goal) {
-					routeNode childNode = new routeNode(parentNode.cost + cost(parentNode.hex, child), distance(child,child), child);
-					route.Add(childNode);
-//					closedSet.Add(new routeNode(parentNode.cost + cost(parentNode.hex, child), distance(child,child), child));
-					openSet.Clear();
-					break;
-				}
+				bool already_visited = false;
+				closedList.ForEach(delegate(routeNode rn){
+					if (rn.hex == child)
+						already_visited = true;
+				});
+				if (already_visited)
+					continue;
+
 				int child_cost = parentNode.cost + cost(parentNode.hex,child);
 				int child_estimate = distance(child, goal);
 				int total_estimate = child_cost + child_estimate;
 				Debug.Log("I am at child " +child.coordinates  + " cost_start: " +child_cost + " estimate: "+child_estimate);
-				bool already_visited_and_found_better_route = false;
-				openSet.ForEach(delegate(routeNode rn){
+				bool already_pending_with_better_estimate = false;
+
+				openList.ForEach(delegate(routeNode rn){
 					if (rn.hex == child && rn.estimate < total_estimate)
-						already_visited_and_found_better_route = true;
+						already_pending_with_better_estimate = true;
 				});
-				if (already_visited_and_found_better_route)
+				if (already_pending_with_better_estimate)
 					continue;
-				closedSet.ForEach(delegate(routeNode rn){
-					if (rn.hex == child && rn.estimate < total_estimate)
-						already_visited_and_found_better_route = true;
-				});
-				if (!already_visited_and_found_better_route)
-					openSet.Add(new routeNode(child_cost, total_estimate, child));
+
+				routeNode childNode = new routeNode(child_cost, total_estimate, child);
+				openList.Add(childNode);
+				pathTree.Add(childNode, parentNode);
 			}
-			closedSet.ForEach(delegate(routeNode rn){ // This needs rethinking
-				if (rn.hex == parentNode.hex) {
-					if (rn.estimate > parentNode.estimate)
-						throw new System.Exception("parent cost wrong!");
-					closedSet.Remove(rn);
-				}
-			});
-			closedSet.Add(parentNode);
+			closedList.Add(parentNode);
 		}
-		return closedSet;
+
+		while (goalNode != null) {
+			finalPath.Add(goalNode);
+			goalNode = pathTree[goalNode];
+		}
+		return finalPath;
 	}
 }

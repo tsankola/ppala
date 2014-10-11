@@ -32,7 +32,7 @@ public class Controller : MonoBehaviour {
 		Hex h2 = hg.getHex(new Coordinate(0,3,-3));
 		Hex h3 = hg.getHex(new Coordinate(-3,1,2));
 		Debug.Log ("Distance: "+ hg.distance(h3,h2));
-		SortedList<int, Hex> route = hg.getRoute(hg.getHex(h1.coordinates), hg.getHex (h2.coordinates));
+		List<KeyValuePair<int, Hex>> route = hg.getRoute(hg.getHex(h1.coordinates), hg.getHex (h2.coordinates));
 		foreach(KeyValuePair <int, Hex> kvp in route) {
 			Debug.Log(kvp.Key + " " + kvp.Value);
 		}
